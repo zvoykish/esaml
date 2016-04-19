@@ -232,7 +232,8 @@ decode_assertion(Xml) ->
         ?xpath_text("/saml:Assertion/saml:Issuer/text()", esaml_assertion, issuer),
         ?xpath_recurse("/saml:Assertion/saml:Subject", esaml_assertion, subject, decode_assertion_subject),
         ?xpath_recurse("/saml:Assertion/saml:Conditions", esaml_assertion, conditions, decode_assertion_conditions),
-        ?xpath_recurse("/saml:Assertion/saml:AttributeStatement", esaml_assertion, attributes, decode_assertion_attributes)
+        ?xpath_recurse("/saml:Assertion/saml:AttributeStatement", esaml_assertion, attributes, decode_assertion_attributes),
+        ?xpath_recurse("/saml:Assertion/saml:AuthnStatement", esaml_assertion, authn, decode_assertion_authn)
     ], #esaml_assertion{}).
 
 -spec decode_assertion_subject(#xmlElement{}) -> {ok, #esaml_subject{}} | {error, term()}.
@@ -286,6 +287,32 @@ decode_assertion_attributes(Xml) ->
             _ -> In
         end
     end, [], Attrs)}.
+
+-spec decode_assertion_authn(#xmlElement{}) -> {ok, conditions()} | {error, term()}.
+decode_assertion_authn(Xml) ->
+    Ns = [{"saml", 'urn:oasis:names:tc:SAML:2.0:assertion'}],
+    esaml_util:threaduntil([
+        fun(C) ->
+            case xmerl_xpath:string("/saml:AuthnStatement/@AuthnInstant", Xml, [{namespace, Ns}]) of
+                [#xmlAttribute{value = V}] -> [{authn_instant, V} | C]; _ -> C
+            end
+        end,
+        fun(C) ->
+            case xmerl_xpath:string("/saml:AuthnStatement/@SessionNotOnOrAfter", Xml, [{namespace, Ns}]) of
+                [#xmlAttribute{value = V}] -> [{session_not_on_or_after, V} | C]; _ -> C
+            end
+        end,
+        fun(C) ->
+            case xmerl_xpath:string("/saml:AuthnStatement/@SessionIndex", Xml, [{namespace, Ns}]) of
+                [#xmlAttribute{value = V}] -> [{session_index, V} | C]; _ -> C
+            end
+        end,
+        fun(C) ->
+            case xmerl_xpath:string("/saml:AuthnStatement/saml:AuthnContext/saml:AuthnContextClassRef/text()", Xml, [{namespace, Ns}]) of
+                [#xmlText{value = V}] -> [{authn_context, V} | C]; _ -> C
+            end
+        end
+    ], []).
 
 %% @doc Returns the time at which an assertion is considered stale.
 %% @private
