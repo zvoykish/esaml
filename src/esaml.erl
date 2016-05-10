@@ -144,9 +144,9 @@ decode_idp_metadata(Xml) ->
           {"ds", 'http://www.w3.org/2000/09/xmldsig#'}],
     esaml_util:threaduntil([
         ?xpath_attr_required("/md:EntityDescriptor/@entityID", esaml_idp_metadata, entity_id, bad_entity),
-        ?xpath_attr_required("/md:EntityDescriptor/md:IDPSSODescriptor/md:SingleSignOnService[@Binding='urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST']/@Location",
+        ?xpath_attr_required("/md:EntityDescriptor/md:IDPSSODescriptor/md:SingleSignOnService[@Binding='urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect']/@Location",
             esaml_idp_metadata, login_location, missing_sso_location),
-        ?xpath_attr("/md:EntityDescriptor/md:IDPSSODescriptor/md:SingleLogoutService[@Binding='urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST']/@Location",
+        ?xpath_attr("/md:EntityDescriptor/md:IDPSSODescriptor/md:SingleLogoutService[@Binding='urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect']/@Location",
             esaml_idp_metadata, logout_location),
         ?xpath_text("/md:EntityDescriptor/md:IDPSSODescriptor/md:NameIDFormat/text()",
             esaml_idp_metadata, name_format, fun nameid_map/1),
@@ -232,7 +232,8 @@ decode_assertion(Xml) ->
         ?xpath_text("/saml:Assertion/saml:Issuer/text()", esaml_assertion, issuer),
         ?xpath_recurse("/saml:Assertion/saml:Subject", esaml_assertion, subject, decode_assertion_subject),
         ?xpath_recurse("/saml:Assertion/saml:Conditions", esaml_assertion, conditions, decode_assertion_conditions),
-        ?xpath_recurse("/saml:Assertion/saml:AttributeStatement", esaml_assertion, attributes, decode_assertion_attributes)
+        ?xpath_recurse("/saml:Assertion/saml:AttributeStatement", esaml_assertion, attributes, decode_assertion_attributes),
+        ?xpath_recurse("/saml:Assertion/saml:AuthnStatement", esaml_assertion, authn, decode_assertion_authn)
     ], #esaml_assertion{}).
 
 -spec decode_assertion_subject(#xmlElement{}) -> {ok, #esaml_subject{}} | {error, term()}.
@@ -286,6 +287,32 @@ decode_assertion_attributes(Xml) ->
             _ -> In
         end
     end, [], Attrs)}.
+
+-spec decode_assertion_authn(#xmlElement{}) -> {ok, conditions()} | {error, term()}.
+decode_assertion_authn(Xml) ->
+    Ns = [{"saml", 'urn:oasis:names:tc:SAML:2.0:assertion'}],
+    esaml_util:threaduntil([
+        fun(C) ->
+            case xmerl_xpath:string("/saml:AuthnStatement/@AuthnInstant", Xml, [{namespace, Ns}]) of
+                [#xmlAttribute{value = V}] -> [{authn_instant, V} | C]; _ -> C
+            end
+        end,
+        fun(C) ->
+            case xmerl_xpath:string("/saml:AuthnStatement/@SessionNotOnOrAfter", Xml, [{namespace, Ns}]) of
+                [#xmlAttribute{value = V}] -> [{session_not_on_or_after, V} | C]; _ -> C
+            end
+        end,
+        fun(C) ->
+            case xmerl_xpath:string("/saml:AuthnStatement/@SessionIndex", Xml, [{namespace, Ns}]) of
+                [#xmlAttribute{value = V}] -> [{session_index, V} | C]; _ -> C
+            end
+        end,
+        fun(C) ->
+            case xmerl_xpath:string("/saml:AuthnStatement/saml:AuthnContext/saml:AuthnContextClassRef/text()", Xml, [{namespace, Ns}]) of
+                [#xmlText{value = V}] -> [{authn_context, V} | C]; _ -> C
+            end
+        end
+    ], []).
 
 %% @doc Returns the time at which an assertion is considered stale.
 %% @private
@@ -397,10 +424,7 @@ to_xml(#esaml_authnreq{version = V, issue_instant = Time, destination = Dest, is
                       #xmlAttribute{name = 'AssertionConsumerServiceURL', value = Consumer},
                       #xmlAttribute{name = 'ProtocolBinding', value = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"}],
         content = [
-            #xmlElement{name = 'saml:Issuer', content = [#xmlText{value = Issuer}]},
-            #xmlElement{name = 'saml:Subject', content = [
-                #xmlElement{name = 'saml:SubjectConfirmation', attributes = [#xmlAttribute{name = 'Method', value = "urn:oasis:names:tc:SAML:2.0:cm:bearer"}]}
-            ]}
+            #xmlElement{name = 'saml:Issuer', content = [#xmlText{value = Issuer}]}
         ]
     });
 

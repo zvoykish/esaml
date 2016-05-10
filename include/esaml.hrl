@@ -59,7 +59,8 @@
 	issuer = "" :: string(),
 	subject = #esaml_subject{} :: esaml:subject(),
 	conditions = [] :: esaml:conditions(),
-	attributes = [] :: proplists:proplist()}).
+	attributes = [] :: proplists:proplist(),
+	authn = [] :: proplists:proplist()}).
 
 -record(esaml_logoutreq, {
 	version = "2.0" :: esaml:version(),
