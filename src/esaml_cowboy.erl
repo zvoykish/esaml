@@ -16,7 +16,7 @@
 -include_lib("xmerl/include/xmerl.hrl").
 -include("esaml.hrl").
 
--export([reply_with_authnreq/4, reply_with_metadata/2, reply_with_logoutreq/4, reply_with_logoutresp/5]).
+-export([reply_with_authnreq/4, reply_with_authnreq/5, reply_with_metadata/2, reply_with_logoutreq/4, reply_with_logoutresp/5]).
 -export([validate_assertion/2, validate_assertion/3, validate_logout/2]).
 
 -type uri() :: string().
