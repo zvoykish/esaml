@@ -17,7 +17,7 @@
 -include("esaml.hrl").
 
 -export([reply_with_authnreq/4, reply_with_authnreq/6, reply_with_metadata/2, reply_with_logoutreq/4, reply_with_logoutresp/5]).
--export([validate_assertion/2, validate_assertion/3, validate_assertion/4, validate_logout/2]).
+-export([validate_assertion/2, validate_assertion/3, validate_assertion/5, validate_logout/2]).
 
 -type uri() :: string().
 
@@ -163,19 +163,25 @@ validate_assertion(SP, Req) ->
     {ok, esaml:assertion(), RelayState :: binary(), Req} |
     {error, Reason :: term(), Req}.
 validate_assertion(SP, DuplicateFun, Req) ->
-    validate_assertion(SP, DuplicateFun, undefined, Req).
+    validate_assertion(SP, DuplicateFun, undefined, undefined, Req).
 
 %% @doc Validate and parse an Assertion with duplicate detection
 %%
 %% This function handles only POST bindings.
 %%
 %% For the signature of DuplicateFun, see esaml_sp:validate_assertion/3
--type custom_security_callback() :: fun((#xmlElement{}, esaml:assertion()) -> ok | {error, any()}).
+-type custom_security_callback() :: fun((#xmlElement{}, esaml:assertion(), custom_security_callback_state()) -> ok | {error, any()}).
+-type custom_security_callback_state() :: any().
 
--spec validate_assertion(esaml:sp(), esaml_sp:dupe_fun(), undefined | custom_security_callback(), Req) ->
-        {ok, esaml:assertion(), RelayState :: binary(), Req} |
-        {error, Reason :: term(), Req}.
-validate_assertion(SP, DuplicateFun, Custom_Response_Security_Callback, Req) ->
+-spec validate_assertion(
+    esaml:sp(),
+    esaml_sp:dupe_fun(),
+    undefined | custom_security_callback(),
+    undefined | custom_security_callback_state(),
+    Req) ->
+    {ok, esaml:assertion(), RelayState :: binary(), Req} |
+    {error, Reason :: term(), Req}.
+validate_assertion(SP, DuplicateFun, Custom_Response_Security_Callback, Callback_State, Req) ->
     % XXX: compat hack, see first version above for explanation
     {ok, PostVals, Req2} = case erlang:function_exported(cowboy_req, continue, 1) of
         true -> cowboy_req:body_qs(Req, [{length, 128000}]);
@@ -190,14 +196,15 @@ validate_assertion(SP, DuplicateFun, Custom_Response_Security_Callback, Req) ->
             {error, {bad_decode, Reason}, Req2};
         Xml ->
             case SP:validate_assertion(Xml, DuplicateFun) of
-                {ok, A}     -> perform_extra_security_if_applicable(Custom_Response_Security_Callback, Xml, A, RelayState, Req2);
+                {ok, A}     -> perform_extra_security_if_applicable(Custom_Response_Security_Callback, Callback_State, Xml, A, RelayState, Req2);
                 {error, E}  -> {error, E, Req2}
             end
     end.
 
-perform_extra_security_if_applicable(undefined, _Xml, Assertion, RelayState, Req) -> {ok, Assertion, RelayState, Req};
-perform_extra_security_if_applicable(Callback,   Xml, Assertion, RelayState, Req) when is_function(Callback, 2) ->
-    case Callback(Xml, Assertion) of
+perform_extra_security_if_applicable(undefined, _Callback_State, _Xml, Assertion, RelayState, Req) ->
+    {ok, Assertion, RelayState, Req};
+perform_extra_security_if_applicable(Callback,   Callback_State,  Xml, Assertion, RelayState, Req) when is_function(Callback, 3) ->
+    case Callback(Xml, Assertion, Callback_State) of
         ok          -> {ok, Assertion, RelayState, Req};
         {error, E}  -> {error, E, Req}
     end.
