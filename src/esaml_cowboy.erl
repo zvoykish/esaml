@@ -28,7 +28,15 @@
 %% AuthnRequest.
 -spec reply_with_authnreq(esaml:sp(), IdPSSOEndpoint :: uri(), RelayState :: binary(), Req) -> {ok, Req}.
 reply_with_authnreq(SP, IDP, RelayState, Req) ->
+    reply_with_authnreq(SP, IDP, RelayState, Req, undefined).
+
+%% @doc Reply to a Cowboy request with an AuthnRequest payload and calls the callback with the (signed?) XML
+%%
+%% Similar to reply_with_authnreq/4, but before replying - calls the callback with the (signed?) XML, allowing persistence and later validation.
+-spec reply_with_authnreq(esaml:sp(), IdPSSOEndpoint :: uri(), RelayState :: binary(), Req, undefined | fun((#xmlElement{}) -> any())) -> {ok, Req}.
+reply_with_authnreq(SP, IDP, RelayState, Req, Xml_Callback) ->
     SignedXml = SP:generate_authn_request(IDP),
+    is_function(Xml_Callback, 1) andalso Xml_Callback(SignedXml),
     reply_with_req(IDP, SignedXml, RelayState, Req).
 
 %% @doc Reply to a Cowboy request with a LogoutRequest payload
