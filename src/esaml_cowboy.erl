@@ -16,8 +16,8 @@
 -include_lib("xmerl/include/xmerl.hrl").
 -include("esaml.hrl").
 
--export([reply_with_authnreq/4, reply_with_metadata/2, reply_with_logoutreq/4, reply_with_logoutresp/5]).
--export([validate_assertion/2, validate_assertion/3, validate_logout/2]).
+-export([reply_with_authnreq/4, reply_with_authnreq/6, reply_with_metadata/2, reply_with_logoutreq/4, reply_with_logoutresp/5]).
+-export([validate_assertion/2, validate_assertion/3, validate_assertion/5, validate_logout/2]).
 
 -type uri() :: string().
 
@@ -28,7 +28,23 @@
 %% AuthnRequest.
 -spec reply_with_authnreq(esaml:sp(), IdPSSOEndpoint :: uri(), RelayState :: binary(), Req) -> {ok, Req}.
 reply_with_authnreq(SP, IDP, RelayState, Req) ->
+    reply_with_authnreq(SP, IDP, RelayState, Req, undefined, undefined).
+
+%% @doc Reply to a Cowboy request with an AuthnRequest payload and calls the callback with the (signed?) XML
+%%
+%% Similar to reply_with_authnreq/4, but before replying - calls the callback with the (signed?) XML, allowing persistence and later validation.
+-type xml_callback_state()  :: any().
+-type xml_callback_fun()    :: fun((#xmlElement{}, xml_callback_state()) -> any()).
+-spec reply_with_authnreq(
+    esaml:sp(),
+    IdPSSOEndpoint :: uri(),
+    RelayState :: binary(),
+    Req,
+    undefined | xml_callback_fun(),
+    undefined | xml_callback_state()) -> {ok, Req}.
+reply_with_authnreq(SP, IDP, RelayState, Req, Xml_Callback, Xml_Callback_State) ->
     SignedXml = SP:generate_authn_request(IDP),
+    is_function(Xml_Callback, 2) andalso Xml_Callback(SignedXml, Xml_Callback_State),
     reply_with_req(IDP, SignedXml, RelayState, Req).
 
 %% @doc Reply to a Cowboy request with a LogoutRequest payload
@@ -143,15 +159,29 @@ reply_with_metadata(SP, Req) ->
 validate_assertion(SP, Req) ->
     validate_assertion(SP, fun(_A, _Digest) -> ok end, Req).
 
+-spec validate_assertion(esaml:sp(), esaml_sp:dupe_fun(), Req) ->
+    {ok, esaml:assertion(), RelayState :: binary(), Req} |
+    {error, Reason :: term(), Req}.
+validate_assertion(SP, DuplicateFun, Req) ->
+    validate_assertion(SP, DuplicateFun, undefined, undefined, Req).
+
 %% @doc Validate and parse an Assertion with duplicate detection
 %%
 %% This function handles only POST bindings.
 %%
 %% For the signature of DuplicateFun, see esaml_sp:validate_assertion/3
--spec validate_assertion(esaml:sp(), esaml_sp:dupe_fun(), Req) ->
-        {ok, esaml:assertion(), RelayState :: binary(), Req} |
-        {error, Reason :: term(), Req}.
-validate_assertion(SP, DuplicateFun, Req) ->
+-type custom_security_callback() :: fun((#xmlElement{}, esaml:assertion(), custom_security_callback_state()) -> ok | {error, any()}).
+-type custom_security_callback_state() :: any().
+
+-spec validate_assertion(
+    esaml:sp(),
+    esaml_sp:dupe_fun(),
+    undefined | custom_security_callback(),
+    undefined | custom_security_callback_state(),
+    Req) ->
+    {ok, esaml:assertion(), RelayState :: binary(), Req} |
+    {error, Reason :: term(), Req}.
+validate_assertion(SP, DuplicateFun, Custom_Response_Security_Callback, Callback_State, Req) ->
     % XXX: compat hack, see first version above for explanation
     {ok, PostVals, Req2} = case erlang:function_exported(cowboy_req, continue, 1) of
         true -> cowboy_req:body_qs(Req, [{length, 128000}]);
@@ -166,9 +196,17 @@ validate_assertion(SP, DuplicateFun, Req) ->
             {error, {bad_decode, Reason}, Req2};
         Xml ->
             case SP:validate_assertion(Xml, DuplicateFun) of
-                {ok, A} -> {ok, A, RelayState, Req2};
-                {error, E} -> {error, E, Req2}
+                {ok, A}     -> perform_extra_security_if_applicable(Custom_Response_Security_Callback, Callback_State, Xml, A, RelayState, Req2);
+                {error, E}  -> {error, E, Req2}
             end
+    end.
+
+perform_extra_security_if_applicable(undefined, _Callback_State, _Xml, Assertion, RelayState, Req) ->
+    {ok, Assertion, RelayState, Req};
+perform_extra_security_if_applicable(Callback,   Callback_State,  Xml, Assertion, RelayState, Req) when is_function(Callback, 3) ->
+    case Callback(Xml, Assertion, Callback_State) of
+        ok          -> {ok, Assertion, RelayState, Req};
+        {error, E}  -> {error, E, Req}
     end.
 
 -ifdef(TEST).
