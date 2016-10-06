@@ -37,13 +37,13 @@ strip(#xmlDocument{content = Kids} = Doc) ->
     Doc#xmlDocument{content = NewKids};
 
 strip(#xmlElement{content = Kids} = Elem) ->
-    NewKids = lists:filter(fun(Kid) ->
-        case xmerl_c14n:canon_name(Kid) of
-            "http://www.w3.org/2000/09/xmldsig#Signature" -> false;
-            _Name -> true
-        end
-    end, Kids),
+    NewKids = [Kid || Kid <- Kids, is_valid_kid(Kid)],
     Elem#xmlElement{content = NewKids}.
+
+is_valid_kid(Kid) when is_record(Kid, xmlAttribute); is_record(Kid, xmlElement) ->
+    Canon_Name = xmerl_c14n:canon_name(Kid),
+    Canon_Name =/= "http://www.w3.org/2000/09/xmldsig#Signature";
+is_valid_kid(_Child) -> true.
 
 %% @doc Signs the given XML element by creating a ds:Signature element within it, returning
 %%      the element with the signature added.
