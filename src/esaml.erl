@@ -515,25 +515,24 @@ to_xml(#esaml_sp_metadata{org = #esaml_org{name = OrgName, displayname = OrgDisp
                 attributes = [#xmlAttribute{name = 'isDefault', value = "true"},
                               #xmlAttribute{name = 'index', value = "0"},
                               #xmlAttribute{name = 'Binding', value = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"},
-                              #xmlAttribute{name = 'Location', value = ConsumerLoc}]},
-            #xmlElement{name = 'md:AttributeConsumingService',
-                attributes = [#xmlAttribute{name = 'isDefault', value = "true"},
-                              #xmlAttribute{name = 'index', value = "0"}],
-                content = [#xmlElement{name = 'md:ServiceName', content = [#xmlText{value = "SAML SP"}]}]}]},
+                    #xmlAttribute{name = 'Location', value = ConsumerLoc}
+                ]}
+        ]},
 
     SpSso = case SLOLoc of
         undefined -> SpSso0;
         _ ->
-            SpSso0#xmlElement{content = SpSso0#xmlElement.content ++ [
+                SpSso0#xmlElement{
+                    content = [
                 #xmlElement{name = 'md:SingleLogoutService',
-                    attributes = [#xmlAttribute{name = isDefault, value = "true"},
-                                  #xmlAttribute{name = index, value = "0"},
+                            attributes = [
                                   #xmlAttribute{name = 'Binding', value = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-REDIRECT"},
                                   #xmlAttribute{name = 'Location', value = SLOLoc}]},
                 #xmlElement{name = 'md:SingleLogoutService',
-                    attributes = [#xmlAttribute{name = index, value = "1"},
+                            attributes = [
                                   #xmlAttribute{name = 'Binding', value = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"},
-                                  #xmlAttribute{name = 'Location', value = SLOLoc}]}
+                                #xmlAttribute{name = 'Location', value = SLOLoc}
+                            ]} | SpSso0#xmlElement.content
             ]}
     end,
 
