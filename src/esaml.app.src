@@ -1,7 +1,7 @@
 {application, esaml,
  [
   {description, "SAML for erlang"},
-  {vsn, "1.1_tt_a"},
+  {vsn, "1.1_tt_b"},
   {registered, []},
   {included_applications, [
   ]},
@@ -15,10 +15,10 @@
                  ]},
   {mod, { esaml, []}},
   {env, [
-    {org_name, "SAML Service Provider"},
-    {org_displayname, "SAML Service Provider @ Some Location"},
-    {org_url, "http://sp.example.com"},
-    {tech_contact, [{name, "SAML SP Support"}, {email, "saml-support@sp.example.com"}]},
+    {org_name, "TigerText"},
+    {org_displayname, "TigerText"},
+    {org_url, "http://www.tigertext.com"},
+    {tech_contact, [{name, "TigerText Support"}, {email, "support@tigertext.me"}]},
     {trusted_fingerprints, []}
     ]}
  ]}.
