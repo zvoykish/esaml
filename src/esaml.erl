@@ -411,7 +411,8 @@ lang_elems(BaseTag, Val) ->
 %% @doc Convert a SAML request/metadata record into XML
 %% @private
 -spec to_xml(saml_record()) -> #xmlElement{}.
-to_xml(#esaml_authnreq{version = V, issue_instant = Time, destination = Dest, issuer = Issuer, consumer_location = Consumer}) ->
+to_xml(#esaml_authnreq{version = V, issue_instant = Time, destination = Dest, issuer = Issuer,
+                       consumer_location = Consumer, user_name_id = User_Name_Id}) ->
     Ns = #xmlNamespace{nodes = [{"samlp", 'urn:oasis:names:tc:SAML:2.0:protocol'},
                                 {"saml", 'urn:oasis:names:tc:SAML:2.0:assertion'}]},
 
@@ -424,7 +425,19 @@ to_xml(#esaml_authnreq{version = V, issue_instant = Time, destination = Dest, is
                       #xmlAttribute{name = 'AssertionConsumerServiceURL', value = Consumer},
                       #xmlAttribute{name = 'ProtocolBinding', value = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"}],
         content = [
-            #xmlElement{name = 'saml:Issuer', content = [#xmlText{value = Issuer}]}
+            #xmlElement{name = 'saml:Issuer', content = [#xmlText{value = Issuer}]} |
+            [#xmlElement{name = 'saml:Subject',
+                content = [
+                    #xmlElement{name = 'saml:NameID',
+                        attributes = [
+                            #xmlAttribute{name = 'Format', value = "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent"}
+                        ],
+                        content = [#xmlText{value = User_Name_Id}]}
+%%                    #xmlElement{name = 'saml:SubjectConfirmation',
+%%                        attributes = [
+%%                            #xmlAttribute{name = 'Method', value = "urn:oasis:names:tc:SAML:2.0:cm:bearer"}
+%%                        ]}
+                ]} || User_Name_Id =/= undefined]
         ]
     });
 

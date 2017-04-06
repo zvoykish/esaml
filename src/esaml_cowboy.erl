@@ -16,7 +16,7 @@
 -include_lib("xmerl/include/xmerl.hrl").
 -include("esaml.hrl").
 
--export([reply_with_authnreq/4, reply_with_authnreq/6, reply_with_metadata/2, reply_with_logoutreq/4, reply_with_logoutresp/5]).
+-export([reply_with_authnreq/4, reply_with_authnreq/7, reply_with_metadata/2, reply_with_logoutreq/4, reply_with_logoutresp/5]).
 -export([validate_assertion/2, validate_assertion/3, validate_assertion/5, validate_logout/2]).
 
 -type uri() :: string().
@@ -28,7 +28,7 @@
 %% AuthnRequest.
 -spec reply_with_authnreq(esaml:sp(), IdPSSOEndpoint :: uri(), RelayState :: binary(), Req) -> {ok, Req}.
 reply_with_authnreq(SP, IDP, RelayState, Req) ->
-    reply_with_authnreq(SP, IDP, RelayState, Req, undefined, undefined).
+    reply_with_authnreq(SP, IDP, RelayState, Req, undefined, undefined, undefined).
 
 %% @doc Reply to a Cowboy request with an AuthnRequest payload and calls the callback with the (signed?) XML
 %%
@@ -40,10 +40,11 @@ reply_with_authnreq(SP, IDP, RelayState, Req) ->
     IdPSSOEndpoint :: uri(),
     RelayState :: binary(),
     Req,
+    undefined | string(),
     undefined | xml_callback_fun(),
     undefined | xml_callback_state()) -> {ok, Req}.
-reply_with_authnreq(SP, IDP, RelayState, Req, Xml_Callback, Xml_Callback_State) ->
-    SignedXml = SP:generate_authn_request(IDP),
+reply_with_authnreq(SP, IDP, RelayState, Req, User_Name_Id, Xml_Callback, Xml_Callback_State) ->
+    SignedXml = SP:generate_authn_request(IDP, User_Name_Id),
     is_function(Xml_Callback, 2) andalso Xml_Callback(SignedXml, Xml_Callback_State),
     reply_with_req(IDP, SignedXml, RelayState, Req).
 
