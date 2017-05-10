@@ -46,7 +46,7 @@ reply_with_authnreq(SP, IDP, RelayState, Req) ->
 reply_with_authnreq(SP, IDP, RelayState, Req, User_Name_Id, Xml_Callback, Xml_Callback_State) ->
     SignedXml = SP:generate_authn_request(IDP, User_Name_Id),
     is_function(Xml_Callback, 2) andalso Xml_Callback(SignedXml, Xml_Callback_State),
-    reply_with_req(IDP, SignedXml, RelayState, Req).
+    reply_with_req(IDP, SignedXml, User_Name_Id, RelayState, Req).
 
 %% @doc Reply to a Cowboy request with a LogoutRequest payload
 %%
@@ -55,7 +55,7 @@ reply_with_authnreq(SP, IDP, RelayState, Req, User_Name_Id, Xml_Callback, Xml_Ca
 -spec reply_with_logoutreq(esaml:sp(), IdPSLOEndpoint :: uri(), NameID :: string(), Req) -> {ok, Req}.
 reply_with_logoutreq(SP, IDP, NameID, Req) ->
     SignedXml = SP:generate_logout_request(IDP, NameID),
-    reply_with_req(IDP, SignedXml, <<>>, Req).
+    reply_with_req(IDP, SignedXml, undefined, <<>>, Req).
 
 %% @doc Reply to a Cowboy request with a LogoutResponse payload
 %%
@@ -64,11 +64,17 @@ reply_with_logoutreq(SP, IDP, NameID, Req) ->
 -spec reply_with_logoutresp(esaml:sp(), IdPSLOEndpoint :: uri(), esaml:status_code(), RelayState :: binary(), Req) -> {ok, Req}.
 reply_with_logoutresp(SP, IDP, Status, RelayState, Req) ->
     SignedXml = SP:generate_logout_response(IDP, Status),
-    reply_with_req(IDP, SignedXml, RelayState, Req).
+    reply_with_req(IDP, SignedXml, undefined, RelayState, Req).
 
 %% @private
-reply_with_req(IDP, SignedXml, RelayState, Req) ->
-    Target = esaml_binding:encode_http_redirect(IDP, SignedXml, RelayState),
+reply_with_req(IDP, SignedXml, User_Name_Id, RelayState, Req) ->
+    Target0 = esaml_binding:encode_http_redirect(IDP, SignedXml, RelayState),
+    Target = case User_Name_Id of
+                 undefined -> Target0;
+                 _ ->
+                     User_Name_Id_Bin = support:get_binary(User_Name_Id),
+                     <<Target0/binary, "&username=", User_Name_Id_Bin/binary>>
+             end,
     {UA, _} = cowboy_req:header(<<"user-agent">>, Req, <<"">>),
     IsIE = not (binary:match(UA, <<"MSIE">>) =:= nomatch),
     if IsIE andalso (byte_size(Target) > 2042) ->
