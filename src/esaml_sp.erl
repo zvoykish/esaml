@@ -39,7 +39,7 @@ generate_authn_request(IdpURL, User_Name_Id, SP = #esaml_sp{metadata_uri = MetaU
     Xml = esaml:to_xml(#esaml_authnreq{issue_instant = Stamp,
                                        destination = IdpURL,
                                        issuer = MetaURI,
-                                       user_name_id = User_Name_Id,
+%%                                       user_name_id = User_Name_Id,
                                        consumer_location = ConsumeURI}),
     if SP#esaml_sp.sp_sign_requests ->
         xmerl_dsig:sign(Xml, SP#esaml_sp.key, SP#esaml_sp.certificate);
