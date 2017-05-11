@@ -425,19 +425,19 @@ to_xml(#esaml_authnreq{version = V, issue_instant = Time, destination = Dest, is
                       #xmlAttribute{name = 'AssertionConsumerServiceURL', value = Consumer},
                       #xmlAttribute{name = 'ProtocolBinding', value = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"}],
         content = [
-            #xmlElement{name = 'saml:Issuer', content = [#xmlText{value = Issuer}]} |
-            [#xmlElement{name = 'saml:Subject',
-                content = [
-                    #xmlElement{name = 'saml:NameID',
-                        attributes = [
-                            #xmlAttribute{name = 'Format', value = "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent"}
-                        ],
-                        content = [#xmlText{value = User_Name_Id}]}
-%%                    #xmlElement{name = 'saml:SubjectConfirmation',
+            #xmlElement{name = 'saml:Issuer', content = [#xmlText{value = Issuer}]} %|
+%%            [#xmlElement{name = 'saml:Subject',
+%%                content = [
+%%                    #xmlElement{name = 'saml:NameID',
 %%                        attributes = [
-%%                            #xmlAttribute{name = 'Method', value = "urn:oasis:names:tc:SAML:2.0:cm:bearer"}
-%%                        ]}
-                ]} || User_Name_Id =/= undefined, User_Name_Id =/= ""]
+%%                            #xmlAttribute{name = 'Format', value = "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent"}
+%%                        ],
+%%                        content = [#xmlText{value = User_Name_Id}]}
+%%%%                    #xmlElement{name = 'saml:SubjectConfirmation',
+%%%%                        attributes = [
+%%%%                            #xmlAttribute{name = 'Method', value = "urn:oasis:names:tc:SAML:2.0:cm:bearer"}
+%%%%                        ]}
+%%                ]} || User_Name_Id =/= undefined, User_Name_Id =/= ""]
         ]
     });
 
