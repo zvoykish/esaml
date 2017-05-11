@@ -437,7 +437,7 @@ to_xml(#esaml_authnreq{version = V, issue_instant = Time, destination = Dest, is
 %%                        attributes = [
 %%                            #xmlAttribute{name = 'Method', value = "urn:oasis:names:tc:SAML:2.0:cm:bearer"}
 %%                        ]}
-                ]} || User_Name_Id =/= undefined]
+                ]} || User_Name_Id =/= undefined, User_Name_Id =/= ""]
         ]
     });
 
