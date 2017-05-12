@@ -63,8 +63,8 @@ encode_http_redirect(IdpTarget, SignedXml, Username, RelayState) ->
   Username_Part = redirect_username_part(Username),
   iolist_to_binary([IdpTarget, FirstParamDelimiter, "SAMLEncoding=", ?deflate, "&", Type, "=", Param, "&RelayState=", RelayStateEsc | Username_Part]).
 
-redirect_username_part(Username) when is_list(Username), length(Username) > 0 ->
-  ["&username=", http_uri:encode(Username)];
+redirect_username_part(Username) when is_binary(Username), size(Username) > 0 ->
+  ["&username=", http_uri:encode(binary_to_list(Username))];
 redirect_username_part(_Other) -> [].
 
 %% @doc Encode a SAMLRequest (or SAMLResponse) as an HTTP-POST binding
