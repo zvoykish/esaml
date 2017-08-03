@@ -37,12 +37,12 @@ reply_with_authnreq(SP, IDP, RelayState, Req) ->
 -type xml_callback_fun()    :: fun((#xmlElement{}, xml_callback_state()) -> any()).
 -spec reply_with_authnreq(
     SP :: esaml:sp(),
-    IDP :: IdPSSOEndpoint :: uri(),
+    IDP :: uri(),
     RelayState :: binary(),
     Req,
     Additional_Query_Params :: [{string(), string()}],
-    Xml_Callback_State :: Xml_Callback :: undefined | xml_callback_fun(),
-    undefined | xml_callback_state()) -> {ok, Req}.
+    Xml_Callback :: undefined | xml_callback_fun(),
+    Xml_Callback_State :: undefined | xml_callback_state()) -> {ok, Req}.
 reply_with_authnreq(SP, IDP, RelayState, Req, Additional_Query_Params, Xml_Callback, Xml_Callback_State) ->
     SignedXml = SP:generate_authn_request(IDP),
     is_function(Xml_Callback, 2) andalso Xml_Callback(SignedXml, Xml_Callback_State),
