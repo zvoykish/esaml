@@ -28,7 +28,7 @@
 %% AuthnRequest.
 -spec reply_with_authnreq(esaml:sp(), IdPSSOEndpoint :: uri(), RelayState :: binary(), Req) -> {ok, Req}.
 reply_with_authnreq(SP, IDP, RelayState, Req) ->
-    reply_with_authnreq(SP, IDP, RelayState, Req, undefined, undefined, undefined).
+    reply_with_authnreq(SP, IDP, RelayState, Req, [], undefined, undefined).
 
 %% @doc Reply to a Cowboy request with an AuthnRequest payload and calls the callback with the (signed?) XML
 %%
@@ -36,17 +36,17 @@ reply_with_authnreq(SP, IDP, RelayState, Req) ->
 -type xml_callback_state()  :: any().
 -type xml_callback_fun()    :: fun((#xmlElement{}, xml_callback_state()) -> any()).
 -spec reply_with_authnreq(
-    esaml:sp(),
-    IdPSSOEndpoint :: uri(),
+    SP :: esaml:sp(),
+    IDP :: IdPSSOEndpoint :: uri(),
     RelayState :: binary(),
     Req,
-    undefined | string(),
-    undefined | xml_callback_fun(),
+    Additional_Query_Params :: [{string(), string()}],
+    Xml_Callback_State :: Xml_Callback :: undefined | xml_callback_fun(),
     undefined | xml_callback_state()) -> {ok, Req}.
-reply_with_authnreq(SP, IDP, RelayState, Req, User_Name_Id, Xml_Callback, Xml_Callback_State) ->
+reply_with_authnreq(SP, IDP, RelayState, Req, Additional_Query_Params, Xml_Callback, Xml_Callback_State) ->
     SignedXml = SP:generate_authn_request(IDP),
     is_function(Xml_Callback, 2) andalso Xml_Callback(SignedXml, Xml_Callback_State),
-    reply_with_req(IDP, SignedXml, User_Name_Id, RelayState, Req).
+    reply_with_req(IDP, SignedXml, Additional_Query_Params, RelayState, Req).
 
 %% @doc Reply to a Cowboy request with a LogoutRequest payload
 %%
@@ -67,8 +67,8 @@ reply_with_logoutresp(SP, IDP, Status, RelayState, Req) ->
     reply_with_req(IDP, SignedXml, undefined, RelayState, Req).
 
 %% @private
-reply_with_req(IDP, SignedXml, Username, RelayState, Req) ->
-    Target = esaml_binding:encode_http_redirect(IDP, SignedXml, Username, RelayState),
+reply_with_req(IDP, SignedXml, Additional_Query_Params, RelayState, Req) ->
+    Target = esaml_binding:encode_http_redirect(IDP, SignedXml, Additional_Query_Params, RelayState),
     {UA, _} = cowboy_req:header(<<"user-agent">>, Req, <<"">>),
     IsIE = not (binary:match(UA, <<"MSIE">>) =:= nomatch),
     if IsIE andalso (byte_size(Target) > 2042) ->

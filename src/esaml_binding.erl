@@ -53,19 +53,18 @@ decode_response(_, SAMLResponse) ->
 %% @doc Encode a SAMLRequest (or SAMLResponse) as an HTTP-REDIRECT binding
 %%
 %% Returns the URI that should be the target of redirection.
--spec encode_http_redirect(IDPTarget :: uri(), SignedXml :: xml(), Username :: undefined | string(), RelayState :: binary()) -> uri().
-encode_http_redirect(IdpTarget, SignedXml, Username, RelayState) ->
+-spec encode_http_redirect(IDPTarget :: uri(), SignedXml :: xml(), Additional_Query_Params :: [{string(), string()}], RelayState :: binary()) -> uri().
+encode_http_redirect(IdpTarget, SignedXml, Additional_Query_Params, RelayState) ->
   Type = xml_payload_type(SignedXml),
   Req = lists:flatten(xmerl:export([SignedXml], xmerl_xml)),
   Param = http_uri:encode(base64:encode_to_string(zlib:zip(Req))),
   RelayStateEsc = http_uri:encode(binary_to_list(RelayState)),
   FirstParamDelimiter = case lists:member($?, IdpTarget) of true -> "&"; false -> "?" end,
-  Username_Part = redirect_username_part(Username),
+  Username_Part = redirect_additional_params_part(Additional_Query_Params),
   iolist_to_binary([IdpTarget, FirstParamDelimiter, "SAMLEncoding=", ?deflate, "&", Type, "=", Param, "&RelayState=", RelayStateEsc | Username_Part]).
 
-redirect_username_part(Username) when is_binary(Username), size(Username) > 0 ->
-  ["&username=", http_uri:encode(binary_to_list(Username))];
-redirect_username_part(_Other) -> [].
+redirect_additional_params_part([]) -> [];
+redirect_additional_params_part([{K, V} | Rest]) -> ["&", K, "=", http_uri:encode(V) | redirect_additional_params_part(Rest)].
 
 %% @doc Encode a SAMLRequest (or SAMLResponse) as an HTTP-POST binding
 %%
