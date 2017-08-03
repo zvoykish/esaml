@@ -55,7 +55,7 @@ reply_with_authnreq(SP, IDP, RelayState, Req, Additional_Query_Params, Xml_Callb
 -spec reply_with_logoutreq(esaml:sp(), IdPSLOEndpoint :: uri(), NameID :: string(), Req) -> {ok, Req}.
 reply_with_logoutreq(SP, IDP, NameID, Req) ->
     SignedXml = SP:generate_logout_request(IDP, NameID),
-    reply_with_req(IDP, SignedXml, undefined, <<>>, Req).
+    reply_with_req(IDP, SignedXml, [], <<>>, Req).
 
 %% @doc Reply to a Cowboy request with a LogoutResponse payload
 %%
@@ -64,7 +64,7 @@ reply_with_logoutreq(SP, IDP, NameID, Req) ->
 -spec reply_with_logoutresp(esaml:sp(), IdPSLOEndpoint :: uri(), esaml:status_code(), RelayState :: binary(), Req) -> {ok, Req}.
 reply_with_logoutresp(SP, IDP, Status, RelayState, Req) ->
     SignedXml = SP:generate_logout_response(IDP, Status),
-    reply_with_req(IDP, SignedXml, undefined, RelayState, Req).
+    reply_with_req(IDP, SignedXml, [], RelayState, Req).
 
 %% @private
 reply_with_req(IDP, SignedXml, Additional_Query_Params, RelayState, Req) ->
